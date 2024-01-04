@@ -1,0 +1,68 @@
+version: "2.3"
+
+services:
+
+  vision_ai:
+    image: "vision_ai"
+    container_name: vision_ai
+    build:
+        context: ./services/vision_ai
+        dockerfile: Dockerfile
+    command: "uvicorn reid:app --host 0.0.0.0 --port 5000"
+    volumes:
+      - ./frames:/app/frames
+      - ./videos:/videos
+      - tmpfs:/tmpfs
+    runtime: nvidia
+    ipc: host
+    shm_size: 1g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      stack:
+        soft: 67108864
+        hard: 67108864
+    ports:
+      - 5000:5000
+    # logging:
+    #   driver: none
+
+  redis:
+    image: "redis:5.0.5-alpine"
+    container_name: redis
+    command: [ sh, -c, "rm -f /data/dump.rdb && redis-server --save ''" ]
+    ports:
+      - 6379:6379
+    logging:
+      driver: none
+
+  vision_ui:
+    image: "vision_ui"
+    container_name: vision_ui
+    build:
+        context: ./services/vision_ui
+        dockerfile: Dockerfile
+    command: "streamlit run /app/app.py --server.port 8080"
+    volumes:
+      - ./frames:/app/frames
+      - tmpfs:/tmpfs
+      - ./videos:/videos
+    runtime: nvidia
+    ipc: host
+    shm_size: 1g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      stack:
+        soft: 67108864
+        hard: 67108864
+    ports:
+      - 8082:8080
+
+volumes:
+  tmpfs:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
